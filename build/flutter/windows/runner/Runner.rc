@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "Your Company" "\0"
-            VALUE "FileDescription", "poketphone" "\0"
+            VALUE "FileDescription", "poketphone-main" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "poketphone" "\0"
+            VALUE "InternalName", "poketphone-main" "\0"
             VALUE "LegalCopyright", "Copyright (c) 2026 Your Company" "\0"
-            VALUE "OriginalFilename", "poketphone.exe" "\0"
-            VALUE "ProductName", "poketphone" "\0"
+            VALUE "OriginalFilename", "poketphone-main.exe" "\0"
+            VALUE "ProductName", "poketphone-main" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

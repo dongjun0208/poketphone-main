@@ -44,6 +44,16 @@ def main(page: ft.Page):
         
     reset_button = ft.TextButton("총 집중 시간 초기화", on_click=reset_total_time, icon=ft.Icons.REFRESH)
 
+    def close_bs(e):
+        bs.open = False
+        page.update()
+
+    # 필수 인자인 content에 기본 Container를 전달하여 에러 해결
+    bs = ft.BottomSheet(
+        content=ft.Container(padding=10),
+        dismissible=True
+    )
+
     def open_pokedex(e):
         grid = ft.GridView(
             expand=True,
@@ -83,50 +93,39 @@ def main(page: ft.Page):
             )
             grid.controls.append(card)
 
-        bs = ft.BottomSheet(
-            ft.Container(
-                ft.Column(
-                    [
-                        ft.Text(f"📖 포켓몬 도감 ({len(state['caught_pokemon'])}/{len(POKEMON_LIST)})", size=20, weight=ft.FontWeight.BOLD),
-                        ft.Divider(),
-                        ft.Container(content=grid, height=280),
-                        ft.ElevatedButton("닫기", on_click=lambda _: page.close(bs))
-                    ],
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER
-                ),
-                padding=20,
-                height=420
+        bs.content = ft.Container(
+            ft.Column(
+                [
+                    ft.Text(f"📖 포켓몬 도감 ({len(state['caught_pokemon'])}/{len(POKEMON_LIST)})", size=20, weight=ft.FontWeight.BOLD),
+                    ft.Divider(),
+                    ft.Container(content=grid, height=280),
+                    ft.ElevatedButton("닫기", on_click=close_bs)
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER
             ),
-            dismissible=True
+            padding=20,
+            height=420
         )
-        page.open(bs)
+        bs.open = True
+        page.update()
 
     pokedex_button = ft.ElevatedButton("📖 포켓몬 도감 열기", on_click=open_pokedex, style=ft.ButtonStyle(color=ft.Colors.AMBER_300))
 
-    def count_timer():
-        while True:
-            if state["is_flipped"]:
-                state["seconds"] += 1
-                state["total_seconds"] += 1
-                
-                timer_text.value = f"현재 집중 시간: {state['seconds']}초"
-                total_timer_text.value = f"총 집중 시간: {state['total_seconds']}초"
-                
-                if state["seconds"] >= 10 and not state["hatched"]:
-                    state["hatched"] = True
-                    
-                    target = random.choice(POKEMON_LIST)
-                    state["current_target"] = target
-                    state["caught_pokemon"].add(target["id"])
-                    
-                    status_text.value = f"🎉 성공! [{target['name']}] 이(가) 부화했습니다!"
-                    status_text.color = ft.Colors.GREEN_400
-                    image_display.src = target["image"]
-                
-                page.update()
-            time.sleep(1)
+    def toggle_flip_test(e):
+        state["is_flipped"] = not state["is_flipped"]
+        if state["is_flipped"]:
+            status_text.value = "📱 폰을 뒤집었습니다. 집중 중..."
+            status_text.color = ft.Colors.BLUE_400
+        else:
+            status_text.value = "⚠️ 규칙 위반! 폰을 다시 만졌습니다."
+            status_text.color = ft.Colors.RED_400
+            state["seconds"] = 0
+            state["hatched"] = False
+            timer_text.value = "현재 집중 시간: 0초"
+            image_display.src = egg_image
+        page.update()
 
-    threading.Thread(target=count_timer, daemon=True).start()
+    test_flip_button = ft.OutlinedButton("🧪 [테스트] 폰 뒤집기/세우기 토글", on_click=toggle_flip_test)
 
     def handle_sensor_change(e):
         try:
@@ -159,7 +158,33 @@ def main(page: ft.Page):
         
         page.overlay.append(accelerometer)
     except Exception as e:
-        print(f"[WARN] 센서를 사용할 수 없습니다: {e}")
+        print(f"[WARN] 센서를 사용할 수 없는 환경입니다: {e}")
+
+    def count_timer():
+        while True:
+            if state["is_flipped"]:
+                state["seconds"] += 1
+                state["total_seconds"] += 1
+                
+                timer_text.value = f"현재 집중 시간: {state['seconds']}초"
+                total_timer_text.value = f"총 집중 시간: {state['total_seconds']}초"
+                
+                if state["seconds"] >= 10 and not state["hatched"]:
+                    state["hatched"] = True
+                    target = random.choice(POKEMON_LIST)
+                    state["current_target"] = target
+                    state["caught_pokemon"].add(target["id"])
+                    
+                    status_text.value = f"🎉 성공! [{target['name']}] 이(가) 부화했습니다!"
+                    status_text.color = ft.Colors.GREEN_400
+                    image_display.src = target["image"]
+                
+                page.update()
+            time.sleep(1)
+
+    threading.Thread(target=count_timer, daemon=True).start()
+
+    page.overlay.append(bs)
 
     page.add(
         status_text,
@@ -172,7 +197,9 @@ def main(page: ft.Page):
         ft.Container(height=15),
         pokedex_button,
         ft.Container(height=5),
-        reset_button
+        reset_button,
+        ft.Container(height=10),
+        test_flip_button
     )
 
-ft.app(target=main)
+ft.app(target=main, view=ft.AppView.WEB_BROWSER)

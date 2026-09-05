@@ -1,10 +1,10 @@
 # Project-level configuration.
 cmake_minimum_required(VERSION 3.14)
-project(poketphone LANGUAGES CXX)
+project(poketphone_main LANGUAGES CXX)
 
 # The name of the application target. The on-disk name is set in
 # runner/CMakeLists.txt to keep Flutter tooling behavior intact.
-set(BINARY_NAME "poketphone")
+set(BINARY_NAME "poketphone_main")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.

@@ -1,13 +1,13 @@
-# poketphone
+# poketphone-main
 
 
 
 ## Template variables
 
-* `poketphone` - project identifier (lowercase, no spaces, i.e. "snake_case") used for bundle IDs and package names.
+* `poketphone_main` - project identifier (lowercase, no spaces, i.e. "snake_case") used for bundle IDs and package names.
 * `` - project description.
-* `poketphone` - executable or bundle name on disk.
-* `poketphone` - display name shown in window titles and about app dialogs.
+* `poketphone-main` - executable or bundle name on disk.
+* `poketphone-main` - display name shown in window titles and about app dialogs.
 * `com.flet` - org name in reverse domain name notation, e.g. `com.mycompany.myproject`.
 * `Your Company` - the name of the company.
 * `Copyright (c) 2026 Your Company` - the copyright notice.

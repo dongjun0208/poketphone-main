@@ -4,10 +4,10 @@ project(runner LANGUAGES CXX)
 
 # The name of the application target. The on-disk name is set as OUTPUT_NAME to keep
 # Flutter tooling behavior intact.
-set(BINARY_NAME "poketphone")
+set(BINARY_NAME "poketphone_main")
 # The unique GTK application identifier for this application. See:
 # https://wiki.gnome.org/HowDoI/ChooseApplicationID
-set(APPLICATION_ID "com.flet.poketphone")
+set(APPLICATION_ID "com.flet.poketphone-main")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
@@ -83,7 +83,7 @@ add_dependencies(${BINARY_NAME} flutter_assemble)
 # the default top-level location.
 set_target_properties(${BINARY_NAME}
   PROPERTIES
-  OUTPUT_NAME "poketphone"
+  OUTPUT_NAME "poketphone-main"
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/intermediates_do_not_run"
 )
 

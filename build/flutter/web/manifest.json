@@ -1,6 +1,6 @@
 {
-    "name": "poketphone",
-    "short_name": "poketphone",
+    "name": "poketphone-main",
+    "short_name": "poketphone_main",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFFFFF",

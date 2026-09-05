@@ -6,7 +6,7 @@
     <string>debugging</string>
     <key>provisioningProfiles</key>
     <dict>
-        <key>com.flet.poketphone</key>
+        <key>com.flet.poketphone-main</key>
         <string></string>
     </dict>
 
