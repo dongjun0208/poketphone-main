@@ -1,0 +1,7 @@
+flutter_application_1/
+build/
+.flet/
+.venv/
+venv/
+__pycache__/
+*.apk
