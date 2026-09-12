@@ -48,7 +48,7 @@ def main(page: ft.Page):
         bs.open = False
         page.update()
 
-    # 필수 인자인 content에 기본 Container를 전달하여 에러 해결
+    # 필수 인자인 content에 기본 Container를 전달
     bs = ft.BottomSheet(
         content=ft.Container(padding=10),
         dismissible=True
@@ -111,55 +111,26 @@ def main(page: ft.Page):
 
     pokedex_button = ft.ElevatedButton("📖 포켓몬 도감 열기", on_click=open_pokedex, style=ft.ButtonStyle(color=ft.Colors.AMBER_300))
 
+    # 집중 시작/중지 토글 기능
     def toggle_flip_test(e):
         state["is_flipped"] = not state["is_flipped"]
         if state["is_flipped"]:
             status_text.value = "📱 폰을 뒤집었습니다. 집중 중..."
             status_text.color = ft.Colors.BLUE_400
+            test_flip_button.text = "⏹️ 집중 중단하기 (폰 일으키기)"
         else:
             status_text.value = "⚠️ 규칙 위반! 폰을 다시 만졌습니다."
             status_text.color = ft.Colors.RED_400
+            test_flip_button.text = "📱 [집중 시작] 폰 뒤집기"
             state["seconds"] = 0
             state["hatched"] = False
             timer_text.value = "현재 집중 시간: 0초"
             image_display.src = egg_image
         page.update()
 
-    test_flip_button = ft.OutlinedButton("🧪 [테스트] 폰 뒤집기/세우기 토글", on_click=toggle_flip_test)
+    test_flip_button = ft.OutlinedButton("📱 [집중 시작] 폰 뒤집기", on_click=toggle_flip_test)
 
-    def handle_sensor_change(e):
-        try:
-            z = e.z
-            if z < -7.0 and not state["is_flipped"]:
-                state["is_flipped"] = True
-                status_text.value = "📱 폰을 뒤집었습니다. 집중 중..."
-                status_text.color = ft.Colors.BLUE_400
-                page.update()
-                
-            elif z > -4.0 and state["is_flipped"]:
-                state["is_flipped"] = False
-                status_text.value = "⚠️ 규칙 위반! 폰을 다시 만졌습니다."
-                status_text.color = ft.Colors.RED_400
-                
-                state["seconds"] = 0
-                state["hatched"] = False
-                timer_text.value = "현재 집중 시간: 0초"
-                image_display.src = egg_image
-                page.update()
-        except Exception as ex:
-            print(f"[ERROR] 센서 처리 오류: {ex}")
-
-    try:
-        accelerometer = ft.Accelerometer()
-        if hasattr(accelerometer, "on_change"):
-            accelerometer.on_change = handle_sensor_change
-        elif hasattr(accelerometer, "on_update"):
-            accelerometer.on_update = handle_sensor_change
-        
-        page.overlay.append(accelerometer)
-    except Exception as e:
-        print(f"[WARN] 센서를 사용할 수 없는 환경입니다: {e}")
-
+    # 타이머 스레드
     def count_timer():
         while True:
             if state["is_flipped"]:
@@ -202,4 +173,4 @@ def main(page: ft.Page):
         test_flip_button
     )
 
-ft.app(target=main, view=ft.AppView.WEB_BROWSER)
+ft.app(target=main)
