@@ -1,176 +1,349 @@
 import flet as ft
-import time
-import threading
+import asyncio
 import random
 
 def main(page: ft.Page):
-    page.title = "포켓몬 집중 타이머 MVP"
+    page.title = "포켓몬 집중 타이머 & 상점"
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.theme_mode = ft.ThemeMode.DARK 
     
     POKEMON_LIST = [
-        {"id": 25, "name": "피카츄", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png"},
-        {"id": 4, "name": "파이리", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/4.png"},
-        {"id": 7, "name": "꼬부기", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/7.png"},
-        {"id": 1, "name": "이상해씨", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png"},
-        {"id": 133, "name": "이브이", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/133.png"},
-        {"id": 39, "name": "푸린", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/39.png"},
-        {"id": 143, "name": "잠만보", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/143.png"},
-        {"id": 94, "name": "팬텀", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/94.png"},
+        # 인기 포켓몬 (50% 확률 공유)
+        {"id": 25, "name": "피카츄", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/25.png", "type": "popular"},
+        {"id": 133, "name": "이브이", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/133.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/133.png", "type": "popular"},
+        
+        # 일반 포켓몬
+        {"id": 4, "name": "파이리", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/4.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/4.png", "type": "normal"},
+        {"id": 7, "name": "꼬부기", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/7.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/7.png", "type": "normal"},
+        {"id": 1, "name": "이상해씨", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/1.png", "type": "normal"},
+        {"id": 39, "name": "푸린", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/39.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/39.png", "type": "normal"},
+        {"id": 143, "name": "잠만보", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/143.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/143.png", "type": "normal"},
+        {"id": 94, "name": "팬텀", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/94.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/94.png", "type": "normal"},
+        
+        # 전설의 포켓몬 (기본 1%, 황금알 5%)
+        {"id": 150, "name": "뮤츠(전설)", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/150.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/150.png", "type": "legend"},
+        {"id": 144, "name": "프리져(전설)", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/144.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/144.png", "type": "legend"},
+        {"id": 145, "name": "썬더(전설)", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/145.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/145.png", "type": "legend"},
+        {"id": 146, "name": "파이어(전설)", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/146.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/146.png", "type": "legend"},
     ]
 
     state = {
         "seconds": 0,
         "total_seconds": 0,
+        "points": 0,                 # 포인트 (60초당 1P)
         "is_flipped": False,
         "hatched": False,
-        "caught_pokemon": set(),
-        "current_target": None
+        "caught_pokemon": set(),    # 일반 획득 포켓몬 ID
+        "caught_shiny": set(),      # 이로치 획득 포켓몬 ID
+        "golden_egg_active": False, # 황금알 일회성 적용 여부
+        "has_shiny_charm": False,   # 빛나는부적 영구 소유 여부
+        "target_seconds": 10
     }
     
     egg_image = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png"
+    golden_egg_img = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png"
 
-    status_text = ft.Text("스마트폰을 뒤집어 주세요!", size=22, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_200)
-    timer_text = ft.Text("현재 집중 시간: 0초", size=28, weight=ft.FontWeight.W_700, color=ft.Colors.AMBER_400)
-    total_timer_text = ft.Text("총 집중 시간: 0초", size=18, weight=ft.FontWeight.BOLD, color=ft.Colors.PURPLE_200)
-    image_display = ft.Image(src=egg_image, width=160, height=160)
+    status_text = ft.Text("스마트폰을 뒤집어 주세요!", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_200)
+    timer_text = ft.Text("현재 집중 시간: 0초", size=24, weight=ft.FontWeight.W_700, color=ft.Colors.AMBER_400)
+    total_timer_text = ft.Text("총 집중 시간: 0초", size=14, weight=ft.FontWeight.BOLD, color=ft.Colors.PURPLE_200)
+    point_text = ft.Text("보유 포인트: 0 P", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.AMBER_300)
     
-    def reset_total_time(e):
-        state["total_seconds"] = 0
-        total_timer_text.value = "총 집중 시간: 0초"
-        print("[LOG] 사용자가 총 집중 시간을 강제로 초기화함")
-        page.update()
-        
-    reset_button = ft.TextButton("총 집중 시간 초기화", on_click=reset_total_time, icon=ft.Icons.REFRESH)
+    image_display = ft.Image(src=egg_image, width=150, height=150)
 
-    def close_bs(e):
+    bs_pokedex = ft.BottomSheet(content=ft.Container(padding=10), dismissible=True)
+    bs_shop = ft.BottomSheet(content=ft.Container(padding=10), dismissible=True)
+
+    def close_bs(bs):
         bs.open = False
         page.update()
 
-    # 필수 인자인 content에 기본 Container를 전달
-    bs = ft.BottomSheet(
-        content=ft.Container(padding=10),
-        dismissible=True
-    )
+    # --- 포켓몬 가챠 및 이로치 뽑기 로직 ---
+    def draw_pokemon(use_golden_egg=False, has_shiny_charm=False):
+        popular_pokes = [p for p in POKEMON_LIST if p["type"] == "popular"]
+        normal_pokes = [p for p in POKEMON_LIST if p["type"] == "normal"]
+        legend_pokes = [p for p in POKEMON_LIST if p["type"] == "legend"]
 
+        # 1. 일반/전설 포켓몬 종류 결정
+        rand_val = random.uniform(0, 100)
+        legend_chance = 5.0 if use_golden_egg else 1.0
+        popular_chance = 50.0
+        
+        if rand_val < legend_chance:
+            chosen = random.choice(legend_pokes)
+        elif rand_val < (legend_chance + popular_chance):
+            chosen = random.choice(popular_pokes)
+        else:
+            chosen = random.choice(normal_pokes)
+
+        # 2. 이로치 판정 (빛나는부적 소유 시 2%, 미소유 시 0.5%)
+        shiny_chance = 2.0 if has_shiny_charm else 0.5
+        is_shiny = random.uniform(0, 100) < shiny_chance
+
+        return chosen, is_shiny
+
+    # --- 상점 열기 ---
+    def open_shop(e):
+        def buy_golden_egg(e):
+            if state["points"] >= 1000:
+                state["points"] -= 1000
+                state["golden_egg_active"] = True
+                image_display.src = golden_egg_img
+                point_text.value = f"보유 포인트: {state['points']} P"
+                status_text.value = "🌟 황금알 장착! 전설 부화 확률 5%로 상승!"
+                close_bs(bs_shop)
+            else:
+                page.open(ft.SnackBar(ft.Text("포인트가 부족합니다! (1,000P 필요)")))
+            page.update()
+
+        def buy_candy(e):
+            if state["points"] >= 50:
+                state["points"] -= 50
+                state["seconds"] += 5
+                point_text.value = f"보유 포인트: {state['points']} P"
+                status_text.value = "🍬 이상한사탕 사용! 집중 시간 +5초!"
+                close_bs(bs_shop)
+            else:
+                page.open(ft.SnackBar(ft.Text("포인트가 부족합니다! (50P 필요)")))
+            page.update()
+
+        def buy_shiny_charm(e):
+            if state["has_shiny_charm"]:
+                page.open(ft.SnackBar(ft.Text("이미 빛나는부적을 보유하고 있습니다!")))
+            elif state["points"] >= 10000:
+                state["points"] -= 10000
+                state["has_shiny_charm"] = True
+                point_text.value = f"보유 포인트: {state['points']} P"
+                status_text.value = "✨ 빛나는부적 습득! 이로치 확률이 영구히 2%로 상승합니다!"
+                close_bs(bs_shop)
+            else:
+                page.open(ft.SnackBar(ft.Text("포인트가 부족합니다! (10,000P 필요)")))
+            page.update()
+
+        charm_button_text = "보유 중" if state["has_shiny_charm"] else "구매"
+
+        bs_shop.content = ft.Container(
+            ft.Column(
+                [
+                    ft.Row(
+                        [
+                            ft.Icon(ft.Icons.SHOPPING_BAG, color=ft.Colors.AMBER_300),
+                            ft.Text("포켓몬 상점", size=20, weight=ft.FontWeight.BOLD),
+                        ],
+                        alignment=ft.MainAxisAlignment.CENTER
+                    ),
+                    ft.Text(f"현재 포인트: {state['points']} P", color=ft.Colors.AMBER_200, size=16),
+                    ft.Divider(),
+                    ft.ListTile(
+                        leading=ft.Icon(ft.Icons.AUTO_AWESOME, color=ft.Colors.AMBER_400),
+                        title=ft.Text("황금알 (1,000 P)"),
+                        subtitle=ft.Text("다음 부화 시 전설 확률이 1%에서 5%로 상승합니다."),
+                        trailing=ft.ElevatedButton("구매", on_click=buy_golden_egg)
+                    ),
+                    ft.ListTile(
+                        leading=ft.Icon(ft.Icons.CAKE, color=ft.Colors.PINK_300),
+                        title=ft.Text("이상한사탕 (50 P)"),
+                        subtitle=ft.Text("즉시 집중 시간 +5초 효과를 얻습니다."),
+                        trailing=ft.ElevatedButton("구매", on_click=buy_candy)
+                    ),
+                    ft.ListTile(
+                        leading=ft.Icon(ft.Icons.BEDAZZLED, color=ft.Colors.PURPLE_300),
+                        title=ft.Text("✨ 빛나는부적 (10,000 P)"),
+                        subtitle=ft.Text("영구 적용! 이로치 등장 확률이 0.5%에서 2%로 올라갑니다."),
+                        trailing=ft.ElevatedButton(charm_button_text, on_click=buy_shiny_charm, disabled=state["has_shiny_charm"])
+                    ),
+                    ft.Container(height=10),
+                    ft.ElevatedButton("닫기", on_click=lambda e: close_bs(bs_shop), icon=ft.Icons.CLOSE)
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER
+            ),
+            padding=20,
+            height=480
+        )
+        bs_shop.open = True
+        page.update()
+
+    # --- 도감 열기 ---
     def open_pokedex(e):
         grid = ft.GridView(
             expand=True,
             runs_count=3,
             max_extent=110,
-            child_aspect_ratio=0.9,
+            child_aspect_ratio=0.85,
             spacing=10,
             run_spacing=10,
         )
         
         for poke in POKEMON_LIST:
             is_caught = poke["id"] in state["caught_pokemon"]
+            is_shiny_caught = poke["id"] in state["caught_shiny"]
+            is_legend = poke["type"] == "legend"
             
+            # 도감에 노출할 이미지 및 텍스트 설정 (이로치 우선 표시)
+            if is_shiny_caught:
+                img_url = poke["shiny_image"]
+                display_name = f"✨{poke['name']}"
+                name_color = ft.Colors.PINK_300
+            elif is_caught:
+                img_url = poke["image"]
+                display_name = poke["name"]
+                name_color = ft.Colors.AMBER_200 if is_legend else ft.Colors.WHITE
+            else:
+                img_url = poke["image"]
+                display_name = "???"
+                name_color = ft.Colors.GREY_600
+
             card = ft.Container(
                 content=ft.Column(
                     [
                         ft.Image(
-                            src=poke["image"],
+                            src=img_url,
                             width=60,
                             height=60,
-                            color=None if is_caught else ft.Colors.BLACK54,
-                            color_blend_mode=None if is_caught else ft.BlendMode.SRC_IN
+                            color=None if (is_caught or is_shiny_caught) else ft.Colors.BLACK87,
+                            color_blend_mode=None if (is_caught or is_shiny_caught) else ft.BlendMode.SRC_IN
                         ),
                         ft.Text(
-                            poke["name"] if is_caught else "???",
-                            size=12,
+                            display_name,
+                            size=10,
                             weight=ft.FontWeight.BOLD,
-                            color=ft.Colors.WHITE if is_caught else ft.Colors.GREY_600
+                            color=name_color,
+                            text_align=ft.TextAlign.CENTER
                         )
                     ],
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     alignment=ft.MainAxisAlignment.CENTER
                 ),
-                bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST if is_caught else ft.Colors.BLACK26,
+                bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST if (is_caught or is_shiny_caught) else ft.Colors.BLACK26,
                 border_radius=10,
                 padding=5
             )
             grid.controls.append(card)
 
-        bs.content = ft.Container(
+        total_collected = len(state['caught_pokemon'].union(state['caught_shiny']))
+
+        bs_pokedex.content = ft.Container(
             ft.Column(
                 [
-                    ft.Text(f"📖 포켓몬 도감 ({len(state['caught_pokemon'])}/{len(POKEMON_LIST)})", size=20, weight=ft.FontWeight.BOLD),
+                    ft.Row(
+                        [
+                            ft.Icon(ft.Icons.BOOK, color=ft.Colors.AMBER_300),
+                            ft.Text(f"포켓몬 도감 ({total_collected}/{len(POKEMON_LIST)})", size=18, weight=ft.FontWeight.BOLD),
+                        ],
+                        alignment=ft.MainAxisAlignment.CENTER
+                    ),
                     ft.Divider(),
-                    ft.Container(content=grid, height=280),
-                    ft.ElevatedButton("닫기", on_click=close_bs)
+                    ft.Container(content=grid, height=300),
+                    ft.ElevatedButton("닫기", on_click=lambda e: close_bs(bs_pokedex), icon=ft.Icons.CLOSE)
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER
             ),
             padding=20,
-            height=420
+            height=450
         )
-        bs.open = True
+        bs_pokedex.open = True
         page.update()
 
-    pokedex_button = ft.ElevatedButton("📖 포켓몬 도감 열기", on_click=open_pokedex, style=ft.ButtonStyle(color=ft.Colors.AMBER_300))
-
-    # 집중 시작/중지 토글 기능
     def toggle_flip_test(e):
         state["is_flipped"] = not state["is_flipped"]
         if state["is_flipped"]:
             status_text.value = "📱 폰을 뒤집었습니다. 집중 중..."
             status_text.color = ft.Colors.BLUE_400
-            test_flip_button.text = "⏹️ 집중 중단하기 (폰 일으키기)"
+            test_flip_button.text = "집중 중단하기 (폰 일으키기)"
+            test_flip_button.icon = ft.Icons.STOP
         else:
             status_text.value = "⚠️ 규칙 위반! 폰을 다시 만졌습니다."
             status_text.color = ft.Colors.RED_400
-            test_flip_button.text = "📱 [집중 시작] 폰 뒤집기"
+            test_flip_button.text = "[집중 시작] 폰 뒤집기"
+            test_flip_button.icon = ft.Icons.PHONE_ANDROID
             state["seconds"] = 0
             state["hatched"] = False
+            state["golden_egg_active"] = False
             timer_text.value = "현재 집중 시간: 0초"
             image_display.src = egg_image
         page.update()
 
-    test_flip_button = ft.OutlinedButton("📱 [집중 시작] 폰 뒤집기", on_click=toggle_flip_test)
+    test_flip_button = ft.OutlinedButton(
+        "[집중 시작] 폰 뒤집기", 
+        on_click=toggle_flip_test,
+        icon=ft.Icons.PHONE_ANDROID
+    )
 
-    # 타이머 스레드
-    def count_timer():
+    shop_button = ft.ElevatedButton(
+        "상점 열기", 
+        on_click=open_shop, 
+        icon=ft.Icons.SHOPPING_CART,
+        style=ft.ButtonStyle(color=ft.Colors.GREEN_300)
+    )
+
+    pokedex_button = ft.ElevatedButton(
+        "포켓몬 도감 열기", 
+        on_click=open_pokedex, 
+        icon=ft.Icons.CATCHING_POKEMON,
+        style=ft.ButtonStyle(color=ft.Colors.AMBER_300)
+    )
+
+    # 비동기 타이머 및 포인트 적립 루프
+    async def count_timer():
         while True:
             if state["is_flipped"]:
                 state["seconds"] += 1
                 state["total_seconds"] += 1
                 
+                # 60초(1분)마다 1 포인트 적립
+                if state["total_seconds"] % 60 == 0:
+                    state["points"] += 1
+                
                 timer_text.value = f"현재 집중 시간: {state['seconds']}초"
                 total_timer_text.value = f"총 집중 시간: {state['total_seconds']}초"
+                point_text.value = f"보유 포인트: {state['points']} P"
                 
-                if state["seconds"] >= 10 and not state["hatched"]:
+                # 부화 로직
+                if state["seconds"] >= state["target_seconds"] and not state["hatched"]:
                     state["hatched"] = True
-                    target = random.choice(POKEMON_LIST)
-                    state["current_target"] = target
-                    state["caught_pokemon"].add(target["id"])
                     
-                    status_text.value = f"🎉 성공! [{target['name']}] 이(가) 부화했습니다!"
-                    status_text.color = ft.Colors.GREEN_400
-                    image_display.src = target["image"]
+                    target, is_shiny = draw_pokemon(
+                        use_golden_egg=state["golden_egg_active"], 
+                        has_shiny_charm=state["has_shiny_charm"]
+                    )
+                    state["golden_egg_active"] = False # 사용된 알 초기화
+                    
+                    if is_shiny:
+                        state["caught_shiny"].add(target["id"])
+                        image_display.src = target["shiny_image"]
+                        status_text.value = f"✨ 대박! 초희귀 이로치 [{target['name']}] 부화!"
+                        status_text.color = ft.Colors.PINK_300
+                    else:
+                        state["caught_pokemon"].add(target["id"])
+                        image_display.src = target["image"]
+                        if target["type"] == "legend":
+                            status_text.value = f"🌟 전설 탄생! [{target['name']}] 부화!"
+                            status_text.color = ft.Colors.AMBER_300
+                        else:
+                            status_text.value = f"🎉 성공! [{target['name']}] 이(가) 부화했습니다!"
+                            status_text.color = ft.Colors.GREEN_400
                 
                 page.update()
-            time.sleep(1)
+            await asyncio.sleep(1)
 
-    threading.Thread(target=count_timer, daemon=True).start()
-
-    page.overlay.append(bs)
+    page.overlay.append(bs_pokedex)
+    page.overlay.append(bs_shop)
 
     page.add(
         status_text,
         ft.Container(height=5),
+        point_text,
         total_timer_text,
         ft.Container(height=10),
         image_display,
         ft.Container(height=10),
         timer_text,     
         ft.Container(height=15),
-        pokedex_button,
-        ft.Container(height=5),
-        reset_button,
+        ft.Row([pokedex_button, shop_button], alignment=ft.MainAxisAlignment.CENTER),
         ft.Container(height=10),
         test_flip_button
     )
 
-ft.app(target=main)
+    page.run_task(count_timer)
+
+ft.app(target=main, assets_dir="assets")
