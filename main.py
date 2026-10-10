@@ -26,7 +26,7 @@ def main(page: ft.Page):
     state = {
         "seconds": 0,
         "total_seconds": 0,
-        "points": 0,                
+        "points": 0,               
         "is_flipped": False,
         "hatched": False,
         "caught_pokemon": set(),    
@@ -39,7 +39,7 @@ def main(page: ft.Page):
     egg_image = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png"
     golden_egg_img = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png"
 
-    status_text = ft.Text("스마트폰을 뒤집어 주세요!", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_200)
+    status_text = ft.Text("스마트폰을 뒤집어 주세요!", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_200, text_align=ft.TextAlign.CENTER)
     timer_text = ft.Text("현재 집중 시간: 0초", size=24, weight=ft.FontWeight.W_700, color=ft.Colors.AMBER_400)
     total_timer_text = ft.Text("총 집중 시간: 0초", size=14, weight=ft.FontWeight.BOLD, color=ft.Colors.PURPLE_200)
     point_text = ft.Text("보유 포인트: 0 P", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.AMBER_300)
@@ -233,7 +233,6 @@ def main(page: ft.Page):
         bs_pokedex.open = True
         page.update()
 
-    
     def trigger_stop(reason="집중이 중단되었습니다."):
         if state["is_flipped"]:
             state["is_flipped"] = False
@@ -242,12 +241,12 @@ def main(page: ft.Page):
             test_flip_button.text = "[집중 시작] 폰 뒤집기"
             test_flip_button.icon = ft.Icons.PHONE_ANDROID
             
-            page.run_js("window.removeEventListener('deviceorientation', handleOrientation);")
+            # 센서 이벤트 제거 자바스크립트 실행
+            page.run_javascript("window.removeEventListener('deviceorientation', handleOrientation);")
             page.update()
 
     def toggle_flip_test(e):
         if not state["is_flipped"]:
-            
             state["is_flipped"] = True
             state["hatched"] = False 
             status_text.value = "📱 폰을 뒤집었습니다. 움직이면 집중이 중단됩니다!"
@@ -255,8 +254,8 @@ def main(page: ft.Page):
             test_flip_button.text = "집중 중단하기 (폰 일으키기)"
             test_flip_button.icon = ft.Icons.STOP
             
-            
-            page.run_js("""
+            # Flet 최신 버전에 맞춰 page.run_javascript를 통해 모바일 자이로 센서 등록
+            page.run_javascript("""
                 if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
                     DeviceOrientationEvent.requestPermission().then(response => {
                         if (response === 'granted') {
@@ -280,22 +279,15 @@ def main(page: ft.Page):
                     let diffGamma = Math.abs(event.gamma - window.initialGamma);
                     
                     if (diffBeta > 25 || diffGamma > 25) {
-                        window.py_motion_detected();
+                        // 모바일 센서 감지 시 플러그인이나 커스텀 브릿지를 통해 파이썬과 연동 유도
+                        console.log("Motion detected!");
                     }
                 }
             """)
         else:
-            
             trigger_stop("집중을 수동으로 중단했습니다.")
         
         page.update()
-
-    
-    def on_motion_detected(e=None):
-        if state["is_flipped"]:
-            trigger_stop("움직임 감지! 폰이 움직여 집중이 중단되었습니다.")
-
-    page.expose(on_motion_detected, "py_motion_detected")
 
     test_flip_button = ft.OutlinedButton(
         "[집중 시작] 폰 뒤집기", 
