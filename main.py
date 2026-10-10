@@ -1,6 +1,6 @@
-import flet as ft
 import asyncio
 import random
+import flet as ft
 
 def main(page: ft.Page):
     page.title = "포켓몬 집중 타이머 & 상점"
@@ -9,19 +9,14 @@ def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.DARK 
     
     POKEMON_LIST = [
-        # 인기 포켓몬 (50% 확률 공유)
         {"id": 25, "name": "피카츄", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/25.png", "type": "popular"},
         {"id": 133, "name": "이브이", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/133.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/133.png", "type": "popular"},
-        
-        # 일반 포켓몬
         {"id": 4, "name": "파이리", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/4.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/4.png", "type": "normal"},
         {"id": 7, "name": "꼬부기", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/7.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/7.png", "type": "normal"},
         {"id": 1, "name": "이상해씨", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/1.png", "type": "normal"},
         {"id": 39, "name": "푸린", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/39.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/39.png", "type": "normal"},
         {"id": 143, "name": "잠만보", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/143.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/143.png", "type": "normal"},
         {"id": 94, "name": "팬텀", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/94.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/94.png", "type": "normal"},
-        
-        # 전설의 포켓몬 (기본 1%, 황금알 5%)
         {"id": 150, "name": "뮤츠(전설)", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/150.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/150.png", "type": "legend"},
         {"id": 144, "name": "프리져(전설)", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/144.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/144.png", "type": "legend"},
         {"id": 145, "name": "썬더(전설)", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/145.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/145.png", "type": "legend"},
@@ -31,13 +26,13 @@ def main(page: ft.Page):
     state = {
         "seconds": 0,
         "total_seconds": 0,
-        "points": 0,                 # 포인트 (60초당 1P)
+        "points": 0,                
         "is_flipped": False,
         "hatched": False,
-        "caught_pokemon": set(),    # 일반 획득 포켓몬 ID
-        "caught_shiny": set(),      # 이로치 획득 포켓몬 ID
-        "golden_egg_active": False, # 황금알 일회성 적용 여부
-        "has_shiny_charm": False,   # 빛나는부적 영구 소유 여부
+        "caught_pokemon": set(),    
+        "caught_shiny": set(),      
+        "golden_egg_active": False, 
+        "has_shiny_charm": False,   
         "target_seconds": 10
     }
     
@@ -58,13 +53,11 @@ def main(page: ft.Page):
         bs.open = False
         page.update()
 
-    # --- 포켓몬 가챠 및 이로치 뽑기 로직 ---
     def draw_pokemon(use_golden_egg=False, has_shiny_charm=False):
         popular_pokes = [p for p in POKEMON_LIST if p["type"] == "popular"]
         normal_pokes = [p for p in POKEMON_LIST if p["type"] == "normal"]
         legend_pokes = [p for p in POKEMON_LIST if p["type"] == "legend"]
 
-        # 1. 일반/전설 포켓몬 종류 결정
         rand_val = random.uniform(0, 100)
         legend_chance = 5.0 if use_golden_egg else 1.0
         popular_chance = 50.0
@@ -76,13 +69,11 @@ def main(page: ft.Page):
         else:
             chosen = random.choice(normal_pokes)
 
-        # 2. 이로치 판정 (빛나는부적 소유 시 2%, 미소유 시 0.5%)
         shiny_chance = 2.0 if has_shiny_charm else 0.5
         is_shiny = random.uniform(0, 100) < shiny_chance
 
         return chosen, is_shiny
 
-    # --- 상점 열기 ---
     def open_shop(e):
         def buy_golden_egg(e):
             if state["points"] >= 1000:
@@ -163,7 +154,6 @@ def main(page: ft.Page):
         bs_shop.open = True
         page.update()
 
-    # --- 도감 열기 ---
     def open_pokedex(e):
         grid = ft.GridView(
             expand=True,
@@ -179,7 +169,6 @@ def main(page: ft.Page):
             is_shiny_caught = poke["id"] in state["caught_shiny"]
             is_legend = poke["type"] == "legend"
             
-            # 도감에 노출할 이미지 및 텍스트 설정 (이로치 우선 표시)
             if is_shiny_caught:
                 img_url = poke["shiny_image"]
                 display_name = f"✨{poke['name']}"
@@ -244,24 +233,69 @@ def main(page: ft.Page):
         bs_pokedex.open = True
         page.update()
 
-    def toggle_flip_test(e):
-        state["is_flipped"] = not state["is_flipped"]
+    
+    def trigger_stop(reason="집중이 중단되었습니다."):
         if state["is_flipped"]:
-            status_text.value = "📱 폰을 뒤집었습니다. 집중 중..."
+            state["is_flipped"] = False
+            status_text.value = f"⚠️ {reason} (시간과 포인트는 유지됨)"
+            status_text.color = ft.Colors.ORANGE_400
+            test_flip_button.text = "[집중 시작] 폰 뒤집기"
+            test_flip_button.icon = ft.Icons.PHONE_ANDROID
+            
+            page.run_js("window.removeEventListener('deviceorientation', handleOrientation);")
+            page.update()
+
+    def toggle_flip_test(e):
+        if not state["is_flipped"]:
+            
+            state["is_flipped"] = True
+            state["hatched"] = False 
+            status_text.value = "📱 폰을 뒤집었습니다. 움직이면 집중이 중단됩니다!"
             status_text.color = ft.Colors.BLUE_400
             test_flip_button.text = "집중 중단하기 (폰 일으키기)"
             test_flip_button.icon = ft.Icons.STOP
+            
+            
+            page.run_js("""
+                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    DeviceOrientationEvent.requestPermission().then(response => {
+                        if (response === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation);
+                        }
+                    }).catch(console.error);
+                } else {
+                    window.addEventListener('deviceorientation', handleOrientation);
+                }
+                
+                window.initialBeta = null;
+                window.initialGamma = null;
+                
+                function handleOrientation(event) {
+                    if (!window.initialBeta) {
+                        window.initialBeta = event.beta;
+                        window.initialGamma = event.gamma;
+                        return;
+                    }
+                    let diffBeta = Math.abs(event.beta - window.initialBeta);
+                    let diffGamma = Math.abs(event.gamma - window.initialGamma);
+                    
+                    if (diffBeta > 25 || diffGamma > 25) {
+                        window.py_motion_detected();
+                    }
+                }
+            """)
         else:
-            status_text.value = "⚠️ 규칙 위반! 폰을 다시 만졌습니다."
-            status_text.color = ft.Colors.RED_400
-            test_flip_button.text = "[집중 시작] 폰 뒤집기"
-            test_flip_button.icon = ft.Icons.PHONE_ANDROID
-            state["seconds"] = 0
-            state["hatched"] = False
-            state["golden_egg_active"] = False
-            timer_text.value = "현재 집중 시간: 0초"
-            image_display.src = egg_image
+            
+            trigger_stop("집중을 수동으로 중단했습니다.")
+        
         page.update()
+
+    
+    def on_motion_detected(e=None):
+        if state["is_flipped"]:
+            trigger_stop("움직임 감지! 폰이 움직여 집중이 중단되었습니다.")
+
+    page.expose(on_motion_detected, "py_motion_detected")
 
     test_flip_button = ft.OutlinedButton(
         "[집중 시작] 폰 뒤집기", 
@@ -283,14 +317,12 @@ def main(page: ft.Page):
         style=ft.ButtonStyle(color=ft.Colors.AMBER_300)
     )
 
-    # 비동기 타이머 및 포인트 적립 루프
     async def count_timer():
         while True:
             if state["is_flipped"]:
                 state["seconds"] += 1
                 state["total_seconds"] += 1
                 
-                # 60초(1분)마다 1 포인트 적립
                 if state["total_seconds"] % 60 == 0:
                     state["points"] += 1
                 
@@ -298,7 +330,6 @@ def main(page: ft.Page):
                 total_timer_text.value = f"총 집중 시간: {state['total_seconds']}초"
                 point_text.value = f"보유 포인트: {state['points']} P"
                 
-                # 부화 로직
                 if state["seconds"] >= state["target_seconds"] and not state["hatched"]:
                     state["hatched"] = True
                     
@@ -306,7 +337,7 @@ def main(page: ft.Page):
                         use_golden_egg=state["golden_egg_active"], 
                         has_shiny_charm=state["has_shiny_charm"]
                     )
-                    state["golden_egg_active"] = False # 사용된 알 초기화
+                    state["golden_egg_active"] = False 
                     
                     if is_shiny:
                         state["caught_shiny"].add(target["id"])
@@ -337,7 +368,7 @@ def main(page: ft.Page):
         ft.Container(height=10),
         image_display,
         ft.Container(height=10),
-        timer_text,     
+        timer_text,    
         ft.Container(height=15),
         ft.Row([pokedex_button, shop_button], alignment=ft.MainAxisAlignment.CENTER),
         ft.Container(height=10),
