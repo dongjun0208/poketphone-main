@@ -23,23 +23,30 @@ def main(page: ft.Page):
         {"id": 146, "name": "파이어(전설)", "image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/146.png", "shiny_image": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/146.png", "type": "legend"},
     ]
 
+    POINT_REWARDS = {
+        "normal": {"first": 100, "duplicate": 30},
+        "popular": {"first": 300, "duplicate": 100},
+        "legend": {"first": 1000, "duplicate": 300},
+        "shiny": {"first": 3000, "duplicate": 1000}
+    }
+
     state = {
         "seconds": 0,
         "total_seconds": 0,
         "points": 0,               
         "is_flipped": False,
         "hatched": False,
-        "caught_pokemon": set(),    
-        "caught_shiny": set(),      
+        "caught_pokemon": {},  
+        "caught_shiny": {},    
         "golden_egg_active": False, 
         "has_shiny_charm": False,   
-        "target_seconds": 10
+        "target_seconds": 600 
     }
     
     egg_image = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png"
     golden_egg_img = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png"
 
-    status_text = ft.Text("스마트폰을 뒤집어 주세요!", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_200, text_align=ft.TextAlign.CENTER)
+    status_text = ft.Text("버튼을 눌러 테스트를 시작하세요!", size=18, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_200, text_align=ft.TextAlign.CENTER)
     timer_text = ft.Text("현재 집중 시간: 0초", size=24, weight=ft.FontWeight.W_700, color=ft.Colors.AMBER_400)
     total_timer_text = ft.Text("총 집중 시간: 0초", size=14, weight=ft.FontWeight.BOLD, color=ft.Colors.PURPLE_200)
     point_text = ft.Text("보유 포인트: 0 P", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.AMBER_300)
@@ -52,6 +59,13 @@ def main(page: ft.Page):
     def close_bs(bs):
         bs.open = False
         page.update()
+
+    def format_time(sec):
+        m, s = divmod(sec, 60)
+        h, m = divmod(m, 60)
+        if h > 0:
+            return f"{h}시간 {m}분 {s}초"
+        return f"{m}분 {s}초"
 
     def draw_pokemon(use_golden_egg=False, has_shiny_charm=False):
         popular_pokes = [p for p in POKEMON_LIST if p["type"] == "popular"]
@@ -90,9 +104,9 @@ def main(page: ft.Page):
         def buy_candy(e):
             if state["points"] >= 50:
                 state["points"] -= 50
-                state["seconds"] += 5
+                state["seconds"] += 1 
                 point_text.value = f"보유 포인트: {state['points']} P"
-                status_text.value = "🍬 이상한사탕 사용! 집중 시간 +5초!"
+                status_text.value = "🍬 이상한사탕 사용!"
                 close_bs(bs_shop)
             else:
                 page.open(ft.SnackBar(ft.Text("포인트가 부족합니다! (50P 필요)")))
@@ -105,7 +119,7 @@ def main(page: ft.Page):
                 state["points"] -= 10000
                 state["has_shiny_charm"] = True
                 point_text.value = f"보유 포인트: {state['points']} P"
-                status_text.value = "✨ 빛나는부적 습득! 이로치 확률이 영구히 2%로 상승합니다!"
+                status_text.value = "✨ 빛나는부적 습득! 이로치 확률 2% 상승!"
                 close_bs(bs_shop)
             else:
                 page.open(ft.SnackBar(ft.Text("포인트가 부족합니다! (10,000P 필요)")))
@@ -128,19 +142,19 @@ def main(page: ft.Page):
                     ft.ListTile(
                         leading=ft.Icon(ft.Icons.AUTO_AWESOME, color=ft.Colors.AMBER_400),
                         title=ft.Text("황금알 (1,000 P)"),
-                        subtitle=ft.Text("다음 부화 시 전설 확률이 1%에서 5%로 상승합니다."),
+                        subtitle=ft.Text("다음 부화 시 전설 확률 5%로 상승"),
                         trailing=ft.ElevatedButton("구매", on_click=buy_golden_egg)
                     ),
                     ft.ListTile(
                         leading=ft.Icon(ft.Icons.CAKE, color=ft.Colors.PINK_300),
                         title=ft.Text("이상한사탕 (50 P)"),
-                        subtitle=ft.Text("즉시 집중 시간 +5초 효과를 얻습니다."),
+                        subtitle=ft.Text("시간 단축 효과"),
                         trailing=ft.ElevatedButton("구매", on_click=buy_candy)
                     ),
                     ft.ListTile(
-                        leading=ft.Icon(ft.Icons.BEDAZZLED, color=ft.Colors.PURPLE_300),
+                        leading=ft.Icon(ft.Icons.AUTO_FIX_HIGH, color=ft.Colors.PURPLE_300),
                         title=ft.Text("✨ 빛나는부적 (10,000 P)"),
-                        subtitle=ft.Text("영구 적용! 이로치 등장 확률이 0.5%에서 2%로 올라갑니다."),
+                        subtitle=ft.Text("이로치 확률 2%로 상승"),
                         trailing=ft.ElevatedButton(charm_button_text, on_click=buy_shiny_charm, disabled=state["has_shiny_charm"])
                     ),
                     ft.Container(height=10),
@@ -159,36 +173,43 @@ def main(page: ft.Page):
             expand=True,
             runs_count=3,
             max_extent=110,
-            child_aspect_ratio=0.85,
+            child_aspect_ratio=0.8,
             spacing=10,
             run_spacing=10,
         )
         
         for poke in POKEMON_LIST:
-            is_caught = poke["id"] in state["caught_pokemon"]
-            is_shiny_caught = poke["id"] in state["caught_shiny"]
+            poke_id = poke["id"]
+            normal_cnt = state["caught_pokemon"].get(poke_id, 0)
+            shiny_cnt = state["caught_shiny"].get(poke_id, 0)
+            
+            is_caught = normal_cnt > 0
+            is_shiny_caught = shiny_cnt > 0
             is_legend = poke["type"] == "legend"
             
             if is_shiny_caught:
                 img_url = poke["shiny_image"]
                 display_name = f"✨{poke['name']}"
                 name_color = ft.Colors.PINK_300
+                count_str = f"x{shiny_cnt}"
             elif is_caught:
                 img_url = poke["image"]
                 display_name = poke["name"]
                 name_color = ft.Colors.AMBER_200 if is_legend else ft.Colors.WHITE
+                count_str = f"x{normal_cnt}"
             else:
                 img_url = poke["image"]
                 display_name = "???"
                 name_color = ft.Colors.GREY_600
+                count_str = ""
 
             card = ft.Container(
                 content=ft.Column(
                     [
                         ft.Image(
                             src=img_url,
-                            width=60,
-                            height=60,
+                            width=55,
+                            height=55,
                             color=None if (is_caught or is_shiny_caught) else ft.Colors.BLACK87,
                             color_blend_mode=None if (is_caught or is_shiny_caught) else ft.BlendMode.SRC_IN
                         ),
@@ -197,6 +218,12 @@ def main(page: ft.Page):
                             size=10,
                             weight=ft.FontWeight.BOLD,
                             color=name_color,
+                            text_align=ft.TextAlign.CENTER
+                        ),
+                        ft.Text(
+                            count_str,
+                            size=9,
+                            color=ft.Colors.GREY_400,
                             text_align=ft.TextAlign.CENTER
                         )
                     ],
@@ -209,7 +236,7 @@ def main(page: ft.Page):
             )
             grid.controls.append(card)
 
-        total_collected = len(state['caught_pokemon'].union(state['caught_shiny']))
+        total_collected = len(set(state['caught_pokemon'].keys()).union(set(state['caught_shiny'].keys())))
 
         bs_pokedex.content = ft.Container(
             ft.Column(
@@ -233,66 +260,33 @@ def main(page: ft.Page):
         bs_pokedex.open = True
         page.update()
 
-    def trigger_stop(reason="집중이 중단되었습니다."):
-        if state["is_flipped"]:
-            state["is_flipped"] = False
-            status_text.value = f"⚠️ {reason} (시간과 포인트는 유지됨)"
-            status_text.color = ft.Colors.ORANGE_400
-            test_flip_button.text = "[집중 시작] 폰 뒤집기"
-            test_flip_button.icon = ft.Icons.PHONE_ANDROID
-            
-            # 센서 이벤트 제거 자바스크립트 실행
-            page.run_javascript("window.removeEventListener('deviceorientation', handleOrientation);")
-            page.update()
-
     def toggle_flip_test(e):
         if not state["is_flipped"]:
             state["is_flipped"] = True
             state["hatched"] = False 
-            status_text.value = "📱 폰을 뒤집었습니다. 움직이면 집중이 중단됩니다!"
+            status_text.value = "🔒 테스트 모드 작동 중! (메뉴 잠김)"
             status_text.color = ft.Colors.BLUE_400
-            test_flip_button.text = "집중 중단하기 (폰 일으키기)"
-            test_flip_button.icon = ft.Icons.STOP
+            test_flip_button.text = "중단하기"
+            test_flip_button.icon = ft.Icons.LOCK_OPEN
             
-            # Flet 최신 버전에 맞춰 page.run_javascript를 통해 모바일 자이로 센서 등록
-            page.run_javascript("""
-                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    DeviceOrientationEvent.requestPermission().then(response => {
-                        if (response === 'granted') {
-                            window.addEventListener('deviceorientation', handleOrientation);
-                        }
-                    }).catch(console.error);
-                } else {
-                    window.addEventListener('deviceorientation', handleOrientation);
-                }
-                
-                window.initialBeta = null;
-                window.initialGamma = null;
-                
-                function handleOrientation(event) {
-                    if (!window.initialBeta) {
-                        window.initialBeta = event.beta;
-                        window.initialGamma = event.gamma;
-                        return;
-                    }
-                    let diffBeta = Math.abs(event.beta - window.initialBeta);
-                    let diffGamma = Math.abs(event.gamma - window.initialGamma);
-                    
-                    if (diffBeta > 25 || diffGamma > 25) {
-                        // 모바일 센서 감지 시 플러그인이나 커스텀 브릿지를 통해 파이썬과 연동 유도
-                        console.log("Motion detected!");
-                    }
-                }
-            """)
+            pokedex_button.disabled = True
+            shop_button.disabled = True
         else:
-            trigger_stop("집중을 수동으로 중단했습니다.")
-        
+            state["is_flipped"] = False
+            status_text.value = "⚠️ 중단되었습니다."
+            status_text.color = ft.Colors.ORANGE_400
+            test_flip_button.text = "테스트 시작"
+            test_flip_button.icon = ft.Icons.LOCK
+            
+            pokedex_button.disabled = False
+            shop_button.disabled = False
+            
         page.update()
 
     test_flip_button = ft.OutlinedButton(
-        "[집중 시작] 폰 뒤집기", 
+        "테스트 시작", 
         on_click=toggle_flip_test,
-        icon=ft.Icons.PHONE_ANDROID
+        icon=ft.Icons.LOCK
     )
 
     shop_button = ft.ElevatedButton(
@@ -315,36 +309,46 @@ def main(page: ft.Page):
                 state["seconds"] += 1
                 state["total_seconds"] += 1
                 
-                if state["total_seconds"] % 60 == 0:
-                    state["points"] += 1
-                
                 timer_text.value = f"현재 집중 시간: {state['seconds']}초"
-                total_timer_text.value = f"총 집중 시간: {state['total_seconds']}초"
+                total_timer_text.value = f"총 집중 시간: {format_time(state['total_seconds'])}"
                 point_text.value = f"보유 포인트: {state['points']} P"
                 
-                if state["seconds"] >= state["target_seconds"] and not state["hatched"]:
-                    state["hatched"] = True
-                    
+                if state["seconds"] >= state["target_seconds"]:
                     target, is_shiny = draw_pokemon(
                         use_golden_egg=state["golden_egg_active"], 
                         has_shiny_charm=state["has_shiny_charm"]
                     )
                     state["golden_egg_active"] = False 
                     
+                    poke_id = target["id"]
+                    poke_type = "shiny" if is_shiny else target["type"]
+                    
                     if is_shiny:
-                        state["caught_shiny"].add(target["id"])
+                        current_count = state["caught_shiny"].get(poke_id, 0)
+                        state["caught_shiny"][poke_id] = current_count + 1
+                        is_first = (current_count == 0)
                         image_display.src = target["shiny_image"]
-                        status_text.value = f"✨ 대박! 초희귀 이로치 [{target['name']}] 부화!"
-                        status_text.color = ft.Colors.PINK_300
                     else:
-                        state["caught_pokemon"].add(target["id"])
+                        current_count = state["caught_pokemon"].get(poke_id, 0)
+                        state["caught_pokemon"][poke_id] = current_count + 1
+                        is_first = (current_count == 0)
                         image_display.src = target["image"]
-                        if target["type"] == "legend":
-                            status_text.value = f"🌟 전설 탄생! [{target['name']}] 부화!"
-                            status_text.color = ft.Colors.AMBER_300
-                        else:
-                            status_text.value = f"🎉 성공! [{target['name']}] 이(가) 부화했습니다!"
-                            status_text.color = ft.Colors.GREEN_400
+                    
+                    earned_points = POINT_REWARDS[poke_type]["first"] if is_first else POINT_REWARDS[poke_type]["duplicate"]
+                    state["points"] += earned_points
+                    
+                    reward_msg = f"+{earned_points}P 획득!"
+                    if is_shiny:
+                        status_text.value = f"✨ 초희귀 이로치 [{target['name']}] 부화! {reward_msg}"
+                        status_text.color = ft.Colors.PINK_300
+                    elif target["type"] == "legend":
+                        status_text.value = f"🌟 전설의 포켓몬 [{target['name']}] 부화! {reward_msg}"
+                        status_text.color = ft.Colors.AMBER_300
+                    else:
+                        status_text.value = f"🎉 [{target['name']}] 부화 완료! {reward_msg}"
+                        status_text.color = ft.Colors.GREEN_400
+                    
+                    state["seconds"] = 0
                 
                 page.update()
             await asyncio.sleep(1)
