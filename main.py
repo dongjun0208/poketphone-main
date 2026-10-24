@@ -3,7 +3,7 @@ import random
 import flet as ft
 
 def main(page: ft.Page):
-    page.title = "포켓몬 집중 타이머 & 상점"
+    page.title = "포켓몬 집중 타이머 & 상점 (테스트 모드)"
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.theme_mode = ft.ThemeMode.DARK 
@@ -40,7 +40,7 @@ def main(page: ft.Page):
         "caught_shiny": {},    
         "golden_egg_active": False, 
         "has_shiny_charm": False,   
-        "target_seconds": 600 
+        "target_seconds": 1 
     }
     
     egg_image = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png"
